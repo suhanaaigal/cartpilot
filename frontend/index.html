@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CartPilot AI - Autonomous Commerce Engine</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <!-- Official Razorpay SDK -->
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans">
+
+  <header class="border-b border-slate-800 bg-slate-900/50 backdrop-blur sticky top-0 z-50">
+    <div class="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="bg-indigo-600 p-2 rounded-xl text-white shadow-lg shadow-indigo-500/30">
+          <i class="fa-solid fa-robot text-xl"></i>
+        </div>
+        <div>
+          <h1 class="text-xl font-bold tracking-tight text-white">CartPilot AI</h1>
+          <p class="text-xs text-slate-400">Autonomous Commerce & Constraint Solver Engine</p>
+        </div>
+      </div>
+      <span class="bg-indigo-950 text-indigo-400 text-xs font-semibold px-3 py-1 rounded-full border border-indigo-800/50 flex items-center gap-2">
+        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span> Agent Active
+      </span>
+    </div>
+  </header>
+
+  <main class="max-w-6xl mx-auto px-4 py-8 flex-1 w-full grid grid-cols-1 lg:grid-cols-3 gap-8">
+    
+    <div class="lg:col-span-2 space-y-6">
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
+        <label for="promptInput" class="block text-sm font-medium text-slate-300 mb-2">
+          Enter your buying goal or budget constraint
+        </label>
+        <div class="relative">
+          <textarea id="promptInput" rows="3" 
+            class="w-full bg-slate-950 border border-slate-800 rounded-xl p-4 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition text-sm resize-none"
+            placeholder="e.g., iPhone under 50k with charger"></textarea>
+          <button id="runBtn" onclick="runAgent()" 
+            class="absolute bottom-3 right-3 bg-indigo-600 hover:bg-indigo-500 text-white font-medium px-4 py-2 rounded-lg text-sm transition flex items-center gap-2 shadow-lg shadow-indigo-600/30">
+            <span>Run Agent</span>
+            <i class="fa-solid fa-bolt text-xs"></i>
+          </button>
+        </div>
+
+        <div class="mt-4 flex flex-wrap items-center gap-2">
+          <span class="text-xs text-slate-500">Quick Test Prompts:</span>
+          <button onclick="setPrompt('iPhone under 50k with charger')" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-2.5 py-1 rounded-lg border border-slate-700/50 transition">
+            iPhone under 50k with charger
+          </button>
+          <button onclick="setPrompt('Laptop for coding under 50k')" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-2.5 py-1 rounded-lg border border-slate-700/50 transition">
+            Laptop for coding under 50k
+          </button>
+          <button onclick="setPrompt('Mobile under 10000')" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-2.5 py-1 rounded-lg border border-slate-700/50 transition">
+            Mobile under 10000
+          </button>
+        </div>
+      </div>
+
+      
+      <div id="logsContainer" class="hidden bg-slate-900/60 border border-slate-800 rounded-2xl p-5 shadow-xl">
+        <h3 class="text-xs font-bold text-indigo-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+          <i class="fa-solid fa-terminal"></i> Agent Decision Reasoning
+        </h3>
+        <ul id="logsList" class="space-y-1.5 font-mono text-xs text-slate-400"></ul>
+      </div>
+
+      <!-- Results Grid -->
+      <div id="resultsContainer" class="space-y-4 hidden">
+        <h2 class="text-lg font-semibold text-slate-200 flex items-center justify-between">
+          <span>Recommended Bundle Items</span>
+          <span id="itemCountBadge" class="text-xs bg-slate-800 text-slate-400 px-2.5 py-1 rounded-full">0 Items</span>
+        </h2>
+        <div id="itemsGrid" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+      </div>
+
+      <div id="errorBox" class="hidden bg-rose-950/40 border border-rose-800/50 rounded-2xl p-6 text-rose-300 text-sm">
+        <i class="fa-solid fa-triangle-exclamation mr-2"></i>
+        <span id="errorMessage">No matching items found.</span>
+      </div>
+    </div>
+
+    <!-- Sidebar Cart & Execution -->
+    <div class="space-y-6">
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl sticky top-24">
+        <h3 class="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+          <i class="fa-solid fa-microchip text-indigo-400"></i> Agent Cart Decision
+        </h3>
+
+        <div id="cartEmptyState" class="py-12 text-center text-slate-500">
+          <i class="fa-solid fa-basket-shopping text-3xl mb-3 text-slate-700"></i>
+          <p class="text-xs">Run a search query to generate an autonomous cart resolution.</p>
+        </div>
+
+        <div id="cartDetails" class="hidden space-y-4">
+          <div class="bg-slate-950 p-3 rounded-xl border border-slate-800/80 flex items-center justify-between text-xs">
+            <span class="text-slate-400">Target Budget Cap:</span>
+            <span id="summaryBudget" class="font-bold text-emerald-400">₹0</span>
+          </div>
+          <div class="bg-slate-950 p-3 rounded-xl border border-slate-800/80 flex items-center justify-between text-xs">
+            <span class="text-slate-400">Optimized Total:</span>
+            <span id="summaryTotal" class="text-base font-bold text-white">₹0</span>
+          </div>
+
+          <div class="bg-indigo-950/30 border border-indigo-800/50 p-3.5 rounded-xl space-y-1.5">
+            <div class="flex items-center justify-between">
+              <span class="text-[10px] font-bold uppercase tracking-wider text-indigo-400">Razorpay Reserve Token</span>
+              <i class="fa-solid fa-shield-halved text-indigo-400 text-xs"></i>
+            </div>
+            <p id="tokenDisplay" class="font-mono text-xs text-slate-300 break-all bg-slate-950/80 p-2 rounded border border-slate-800">--</p>
+          </div>
+
+          <button id="checkoutBtn" onclick="executeRazorpayCheckout()" 
+            class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-3 rounded-xl text-sm transition shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-2">
+            <i class="fa-solid fa-lock text-xs"></i>
+            <span>Execute Agent Checkout</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    let currentResponseData = null;
+
+    function setPrompt(text) {
+      document.getElementById('promptInput').value = text;
+      runAgent();
+    }
+
+    async function runAgent() {
+      const prompt = document.getElementById('promptInput').value.trim();
+      if (!prompt) return;
+
+      const runBtn = document.getElementById('runBtn');
+      runBtn.disabled = true;
+      runBtn.innerHTML = `<i class="fa-solid fa-circle-notch animate-spin text-xs"></i> Processing...`;
+      document.getElementById('errorBox').classList.add('hidden');
+
+      try {
+        const response = await fetch('http://127.0.0.1:8005/api/agent/run', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt: prompt })
+        });
+
+        const data = await response.json();
+        currentResponseData = data;
+
+        if (data.status === 'failed') {
+          showError(data.message || 'No products found within budget.');
+          hideCart();
+        } else {
+          renderLogs(data.reasoning_logs || []);
+          renderResults(data);
+        }
+      } catch (err) {
+        showError('Could not connect to FastAPI backend at http://127.0.0.1:8005');
+        hideCart();
+      } finally {
+        runBtn.disabled = false;
+        runBtn.innerHTML = `<span>Run Agent</span><i class="fa-solid fa-bolt text-xs"></i>`;
+      }
+    }
+
+    function renderLogs(logs) {
+      const logsContainer = document.getElementById('logsContainer');
+      const logsList = document.getElementById('logsList');
+      logsList.innerHTML = '';
+      logs.forEach(log => {
+        const li = document.createElement('li');
+        li.innerHTML = `<span class="text-indigo-500">></span> ${log}`;
+        logsList.appendChild(li);
+      });
+      logsContainer.classList.remove('hidden');
+    }
+
+    function renderResults(data) {
+      const itemsGrid = document.getElementById('itemsGrid');
+      const resultsContainer = document.getElementById('resultsContainer');
+      const itemCountBadge = document.getElementById('itemCountBadge');
+
+      itemsGrid.innerHTML = '';
+      const items = data.selected_items || [];
+      itemCountBadge.innerText = `${items.length} Item${items.length > 1 ? 's' : ''}`;
+
+      items.forEach(item => {
+        const card = document.createElement('div');
+        card.className = 'bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col justify-between hover:border-slate-700 transition space-y-3';
+        card.innerHTML = `
+          <div>
+            <div class="flex items-center justify-between gap-2 mb-2">
+              <span class="text-[10px] uppercase tracking-wider font-bold text-indigo-400 bg-indigo-950/60 px-2 py-0.5 rounded border border-indigo-800/40">
+                ${item.brand}
+              </span>
+              <label class="flex items-center gap-2 cursor-pointer text-xs text-slate-300">
+                <input type="checkbox" checked class="item-checkbox rounded border-slate-700 bg-slate-950 text-indigo-600 focus:ring-indigo-500 w-4 h-4" data-price="${item.price}" onchange="recalculateTotal()">
+                Select
+              </label>
+            </div>
+            <h4 class="text-sm font-semibold text-slate-100">${item.name}</h4>
+          </div>
+          <div class="pt-2 border-t border-slate-800/80 flex items-center justify-between">
+            <span class="text-xs text-slate-400">Price</span>
+            <span class="text-sm font-bold text-emerald-400">₹${item.price.toLocaleString('en-IN')}</span>
+          </div>
+        `;
+        itemsGrid.appendChild(card);
+      });
+
+      resultsContainer.classList.remove('hidden');
+      document.getElementById('cartEmptyState').classList.add('hidden');
+      document.getElementById('cartDetails').classList.remove('hidden');
+      document.getElementById('summaryBudget').innerText = `₹${data.max_budget.toLocaleString('en-IN')}`;
+      document.getElementById('tokenDisplay').innerText = data.reserve_token;
+      
+      recalculateTotal();
+    }
+
+    function recalculateTotal() {
+      const checkboxes = document.querySelectorAll('.item-checkbox');
+      let total = 0;
+      let selectedCount = 0;
+
+      checkboxes.forEach(cb => {
+        if (cb.checked) {
+          total += parseFloat(cb.getAttribute('data-price'));
+          selectedCount++;
+        }
+      });
+
+      if (currentResponseData) currentResponseData.total_cost = total;
+      document.getElementById('summaryTotal').innerText = `₹${total.toLocaleString('en-IN')}`;
+      
+      const checkoutBtn = document.getElementById('checkoutBtn');
+      checkoutBtn.disabled = selectedCount === 0;
+      checkoutBtn.classList.toggle('opacity-50', selectedCount === 0);
+      checkoutBtn.classList.toggle('cursor-not-allowed', selectedCount === 0);
+    }
+
+    function showError(msg) {
+      document.getElementById('resultsContainer').classList.add('hidden');
+      document.getElementById('logsContainer').classList.add('hidden');
+      document.getElementById('errorBox').classList.remove('hidden');
+      document.getElementById('errorMessage').innerText = msg;
+    }
+
+    function hideCart() {
+      document.getElementById('cartEmptyState').classList.remove('hidden');
+      document.getElementById('cartDetails').classList.add('hidden');
+    }
+
+    // --- Official Razorpay Modal Checkout ---
+    function executeRazorpayCheckout() {
+      if (!currentResponseData || currentResponseData.total_cost === 0) return;
+
+      const amountInPaise = Math.round(Number(currentResponseData.total_cost) * 100);
+
+      const options = {
+        "key": "api key here",
+        "amount": amountInPaise,
+        "currency": "INR",
+        "name": "CartPilot AI",
+        "description": "Autonomous Agent Reserve Checkout",
+        "prefill": {
+          "name": "Suhana Aigal",
+          "email": "suhana@example.com",
+          "contact": "9876543210"
+        },
+        "notes": {
+          "reserve_token": currentResponseData.reserve_token
+        },
+        "theme": {
+          "color": "#4F46E5"
+        },
+        "handler": function (response) {
+          fetch('http://127.0.0.1:8005/api/agent/verify-payment', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              token: currentResponseData.reserve_token,
+              razorpay_payment_id: response.razorpay_payment_id
+            })
+          })
+          .then(res => res.json())
+          .then(data => {
+            alert("Payment Verified & Reservation Settled!\nRazorpay Payment ID: " + response.razorpay_payment_id);
+          })
+          .catch(err => alert("Verification Error: " + err));
+        }
+      };
+
+      try {
+        const rzp = new Razorpay(options);
+        rzp.on('payment.failed', function (response){
+          alert("Razorpay Error: " + (response.error.description || response.error.reason));
+        });
+        rzp.open();
+      } catch (e) {
+        alert("SDK Initialization Error: " + e.message);
+      }
+    }
+  </script>
+</body>
+</html>
